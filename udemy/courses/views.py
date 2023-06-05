@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from courses.models import Course, Sector
+from .serializers import CourseDisplaySerializer
 
 # Create your views here.
 class CoursesHomeView(APIView):
@@ -18,7 +19,8 @@ class CoursesHomeView(APIView):
                 "sector_name": sector.name,
                 "sector_uuid": sector.sector_uuid,
                 "featured_courses": courses_serializer.data,
-                "sector_image":sector.sector_image.url
+                "sector_image":sector.sector_image.url,
+                "sector_image":sector.get_image_absolute_url()
             }
             sector_response.append(sector_obj)
             

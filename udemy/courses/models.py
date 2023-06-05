@@ -16,8 +16,10 @@ class Sector(models.Model):
     sector_image=models.ImageField(upload_to='sector_images', blank=True, null=True)
     
     def get_image_absolute_url(self):
-        return "http://localhost:8000"+self.sector_image
+        return "http://localhost:8000"+self.sector_image.url
 
+    def __str__(self):
+        return self.name
 class Course(models.Model):
     title=models.CharField(max_length=225)
     description=models.TextField()
@@ -34,6 +36,7 @@ class Course(models.Model):
     comment=models.ManyToManyField('Comment',blank=True)
     course_uuid=models.UUIDField(default=uuid.uuid4,unique=True)
     # image_url=models.ImageField(upload_to='course_images',storage=MediaCloudinaryStorage())
+    image_url=models.ImageField(upload_to='course_images', blank=True, null=True)
     price=models.DecimalField(max_digits=5 ,decimal_places=2)
     
     def get_brief_description(self):
@@ -55,7 +58,11 @@ class Course(models.Model):
                 length+=episode.length
        
         return get_timer(length,type="short")
-            
+    def get_image_absolute_url(self):
+        return "http://localhost:8000"+self.image_url.url
+
+    def __str__(self):
+        return self.title       
     
 class CourseSection(models.Model):
     section_title=models.CharField(max_length=225,blank=True,null=True)
@@ -88,7 +95,7 @@ class Episode(models.Model):
     
     def get_absolute_url(self):
         # return self.file.url
-        return "http://localhost:8000"+self.file
+        return "http://localhost:8000"+self.file.url
     
     def save(self,*args, **kwargs):
         self.length=self.get_video_length()
@@ -101,4 +108,4 @@ class Comment(models.Model):
     user=models.ForeignKey(User,on_delete=models.CASCADE)
     message=models.TextField()
     created=models.DateTimeField(auto_now=True)
-    
+
