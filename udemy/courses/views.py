@@ -3,9 +3,15 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from django.http import HttpResponseBadRequest
 from courses.models import Course, Sector
-from .serializers import CourseDisplaySerializer
+from .serializers import CourseDisplaySerializer, CourseUnpaidSerializer, CoursesListSerializer, CommentSerializer
+from django.db.models import Q
+import json
+from django.conf import settings
+from users.models import User
 
+# User = settings.AUTH_USER_MODEL
 # Create your views here.
 class CoursesHomeView(APIView):
     def get(self, request, *args, **kwargs):
@@ -25,3 +31,72 @@ class CoursesHomeView(APIView):
             sector_response.append(sector_obj)
             
         return Response(data=sector_response,status=status.HTTP_200_OK)
+    
+class CourseDetailView(APIView):
+    def get(self, request, course_uuid, *args, **kwargs):
+        course = Course.objects.filter(course_uuid=course_uuid)
+        
+        if not course:
+            return HttpResponseBadRequest("Course does not exist!")
+        
+        serializer = CourseUnpaidSerializer(course[0])
+        return Response(data=serializer.data, status=status.HTTP_200_OK)
+    
+class SectorCoursesView(APIView):
+    def get(self, request, sector_uuid, *args, **kwargs):
+        sector = Sector.objects.filter(sector_uuid=sector_uuid)
+        
+        if not sector:
+            return HttpResponseBadRequest("Sector matching query does not exist!")
+        
+        sector_courses = sector[0].related_courses.all()
+        serializer = CoursesListSerializer(sector_courses, many=True)
+        
+        total_students=0
+        for course in sector_courses:
+            total_students+=course.get_enrolled_students()
+            
+        return Response({
+            'data':serializer.data, 
+            'sector_name':sector[0].name, 
+            'total_students':total_students
+            }, status=status.HTTP_200_OK)
+
+class SearchCourseView(APIView):
+    def get(self, request, search_term):
+        matches=Course.objects.filter(Q(title__icontains=search_term) | Q(description__icontains=search_term))
+        serializer = CoursesListSerializer(matches, many=True)
+        return Response(data=serializer.data, status=status.HTTP_200_OK )
+
+class AddComment(APIView):
+    def post(self, request, course_uuid):
+        try:
+            course = Course.objects.get(course_uuid=course_uuid)
+        except Course.DoesNotExist:
+            return HttpResponseBadRequest('Course does not exist')
+        
+        content = json.loads(request.body)
+        
+        # Check if message is in posted data
+        if not content.get('message'):
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = CommentSerializer(data=content)
+        
+        if serializer.is_valid():
+            author = User.objects.get(id=1) #We are using id=1 before implementing the user authentication
+            comment = serializer.save(user=author)
+            course.comment.add(comment) #Add comment to the many to many course comments field
+            
+            return Response(status=status.HTTP_201_CREATED)
+        
+        else:
+            return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+class GetCartDetails(APIView):
+    def post(self, request):
+        try:
+            body=json.loads(request.body)
+        except json.decoder.JSONDecodeError:
+            return HttpResponseBadRequest
+        
