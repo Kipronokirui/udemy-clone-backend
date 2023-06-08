@@ -15,6 +15,7 @@ endpoint_secret="Get this value from the stripe cli after installing. To be used
 stripe.api_key = stripe_api_key
 # Create your views here.
 class PaymentHandler(APIView):
+    permission_classes=[IsAuthenticated]
     def post(self, request):
         if request.body:
             body = json.loads(request.body)

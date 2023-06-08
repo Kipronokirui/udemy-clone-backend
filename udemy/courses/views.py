@@ -72,6 +72,7 @@ class SearchCourseView(APIView):
         return Response(data=serializer.data, status=status.HTTP_200_OK )
 
 class AddComment(APIView):
+    permission_classes=[IsAuthenticated]
     def post(self, request, course_uuid):
         try:
             course = Course.objects.get(course_uuid=course_uuid)
@@ -87,7 +88,8 @@ class AddComment(APIView):
         serializer = CommentSerializer(data=content)
         
         if serializer.is_valid():
-            author = User.objects.get(id=1) #We are using id=1 before implementing the user authentication
+            author = request.user
+            # author = User.objects.get(id=1) #We are using id=1 before implementing the user authentication
             comment = serializer.save(user=author)
             course.comment.add(comment) #Add comment to the many to many course comments field
             
@@ -127,6 +129,7 @@ class GetCartDetails(APIView):
         return Response(data={"cart_detail":serializer.data,"cart_total":str(cart_cost)})
     
 class CourseStudy(APIView):
+    permission_classes=[IsAuthenticated]
     def get(self, request, course_uuid):
         try:
             course = Course.objects.get(course_uuid=course_uuid)
